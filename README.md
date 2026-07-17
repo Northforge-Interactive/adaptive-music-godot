@@ -88,5 +88,5 @@ MIT — see `LICENSE`.
 
 ---
 
-Built for and battle-tested in [PULSE//ZERO](https://github.com/Northforge-Interactive)
+Built for and battle-tested in [PULSE//ZERO](https://northforge-interactive.itch.io/pulse-zero)
 by [Northforge Interactive](https://github.com/Northforge-Interactive).
