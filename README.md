@@ -1,5 +1,7 @@
 # Adaptive Music (Godot 4)
 
+📺 **[Watch the demo](https://youtu.be/ZR6SFsii_5M)**
+
 Tempo-locked adaptive music. Two mechanisms, both beat-matched:
 
 - **Layers (vertical)** — stems that play phase-locked and fade in/out by a single
