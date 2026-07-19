@@ -93,9 +93,32 @@ func add_layer(
 		"b": maxf(full_at, fade_in_at + 0.001),
 		"max_db": max_db,
 		"cur_db": SILENCE_DB,
+		"tween": null,   # active fade/stop tween, if any — killed before a new one
 	}
 	var layers: Array = _sections[section]
 	layers.append(layer)
+
+
+## Kill a layer's pending fade/stop tween so it can't fire (e.g. a late stop() that
+## would silence a freshly (re)started player). Safe to call when none is pending.
+func _kill_layer_tween(layer: Dictionary) -> void:
+	var tw = layer.get("tween")
+	if tw != null and is_instance_valid(tw) and (tw as Tween).is_valid():
+		(tw as Tween).kill()
+	layer["tween"] = null
+
+
+## Fade a layer to a target dB, optionally stopping it at the end. Cancels any
+## pending tween on that layer first so overlapping fades can't fight or the old
+## one's stop-callback can't fire after a restart.
+func _fade_layer(layer: Dictionary, to_db: float, dur: float, stop_after: bool) -> void:
+	_kill_layer_tween(layer)
+	var p: AudioStreamPlayer = layer["player"]
+	var tw := create_tween()
+	layer["tween"] = tw
+	tw.tween_property(p, "volume_db", to_db, dur)
+	if stop_after:
+		tw.tween_callback(p.stop)
 
 
 ## Start a section immediately (all its layers begin phase-locked). Resets the clock.
@@ -103,6 +126,12 @@ func play(section: String) -> void:
 	if not _sections.has(section):
 		push_warning("AdaptiveMusicPlayer: unknown section '%s'" % section)
 		return
+	# Cancel every pending fade/stop tween across all sections first. Without this, a
+	# stop() fade still in flight (e.g. from a run ending) fires its p.stop() callback
+	# seconds into the new section and silences the just-started music.
+	for s in _sections:
+		for layer in _sections[s]:
+			_kill_layer_tween(layer)
 	for other in _sections:
 		if other != section:
 			_silence_section(other, true)
@@ -220,6 +249,7 @@ func _do_transition(section: String) -> void:
 	_pending = ""
 	_pending_at = -1.0
 	for layer in _sections[section]:
+		_kill_layer_tween(layer)      # incoming is driven by _apply_intensity, no stale fade
 		var p: AudioStreamPlayer = layer["player"]
 		layer["cur_db"] = SILENCE_DB
 		p.volume_db = SILENCE_DB
@@ -227,10 +257,7 @@ func _do_transition(section: String) -> void:
 			p.play()
 	if outgoing != "" and _sections.has(outgoing):
 		for layer in _sections[outgoing]:
-			var p: AudioStreamPlayer = layer["player"]
-			var tw := create_tween()
-			tw.tween_property(p, "volume_db", SILENCE_DB, transition_time)
-			tw.tween_callback(p.stop)
+			_fade_layer(layer, SILENCE_DB, transition_time, true)
 	section_changed.emit(section)
 
 
@@ -253,10 +280,9 @@ func _silence_section(section: String, immediate: bool, fade: float = 1.0) -> vo
 	for layer in _sections[section]:
 		var p: AudioStreamPlayer = layer["player"]
 		if immediate:
+			_kill_layer_tween(layer)
 			p.stop()
 			p.volume_db = SILENCE_DB
 			layer["cur_db"] = SILENCE_DB
 		elif p.playing:
-			var tw := create_tween()
-			tw.tween_property(p, "volume_db", SILENCE_DB, fade)
-			tw.tween_callback(p.stop)
+			_fade_layer(layer, SILENCE_DB, fade, true)
