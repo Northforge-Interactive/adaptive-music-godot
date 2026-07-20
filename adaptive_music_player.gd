@@ -93,7 +93,7 @@ func add_layer(
 		"b": maxf(full_at, fade_in_at + 0.001),
 		"max_db": max_db,
 		"cur_db": SILENCE_DB,
-		"tween": null,   # active fade/stop tween, if any — killed before a new one
+		"tween": null,  # active fade/stop tween, if any — killed before a new one
 	}
 	var layers: Array = _sections[section]
 	layers.append(layer)
@@ -266,7 +266,7 @@ func _do_transition(section: String) -> void:
 	_pending = ""
 	_pending_at = -1.0
 	for layer in _sections[section]:
-		_kill_layer_tween(layer)      # incoming is driven by _apply_intensity, no stale fade
+		_kill_layer_tween(layer)  # incoming is driven by _apply_intensity, no stale fade
 		var p: AudioStreamPlayer = layer["player"]
 		layer["cur_db"] = SILENCE_DB
 		p.volume_db = SILENCE_DB
