@@ -190,6 +190,23 @@ func stop(fade: float = 1.0) -> void:
 		_silence_section(section, fade <= 0.0, fade)
 
 
+func shutdown() -> void:
+	_playing = false
+	_pending = ""
+	_pending_at = -1.0
+	for section in _sections:
+		for layer: Dictionary in _sections[section]:
+			_kill_layer_tween(layer)
+			var player := layer["player"] as AudioStreamPlayer
+			player.stop()
+			player.stream = null
+	_sections.clear()
+
+
+func _exit_tree() -> void:
+	shutdown()
+
+
 func active_section() -> String:
 	return _active
 
